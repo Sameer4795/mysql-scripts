@@ -1,0 +1,59 @@
+trigger:
+- main  # Trigger pipeline when changes are pushed to the main branch
+
+pool:
+  vmImage: 'ubuntu-latest'  # Using an Ubuntu agent for the pipeline
+
+variables:
+  MYSQL_HOST: 'localhost'  # Correcting the MYSQL_HOST definition
+  MYSQL_DATABASE: 'mydatabase'
+  MYSQL_USER: 'root'
+
+resources:
+  repositories:
+    - repository: githubRepo
+      type: github
+      name: Sameer4795/mysql-scripts  # Use your actual GitHub repository name here
+      connection: github.com_Sameer4795  # Using your GitHub service connection
+      ref: refs/heads/main  # Replace with your branch name if needed
+
+stages:
+- stage: DeployMySQL
+  displayName: 'Deploy MySQL Queries'
+  jobs:
+  - job: ExecuteQueries
+    displayName: 'Run MySQL Queries'
+    pool:
+      name: 'Default'  # Using the default agent pool
+    steps:
+
+    - checkout: githubRepo  # This checks out the repo defined in the resources section
+
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: github.com_Sameer4795  # Replace with your Azure service connection
+        KeyVaultName: SameerKeyVault
+        SecretsFilter: 'MYSQL_CONNECTION_STRING,MYSQL_PASSWORD'
+        RunAsPreJob: false
+
+    - script: |
+        echo "Retrieving MySQL credentials from Azure Key Vault..."
+        export MYSQL_CONNECTION_STRING=$(MYSQL_CONNECTION_STRING)
+        export MYSQL_PASSWORD=$(MYSQL_PASSWORD)
+
+        echo "Checking if the MySQL scripts directory exists..."
+        if [ ! -d "mysql-scripts" ]; then
+          echo "Error: mysql-scripts directory not found!"
+          exit 1
+        fi
+
+        echo "Executing MySQL scripts from repository..."
+        for file in mysql-scripts/*.sql; do
+          echo "Running $file..."
+          mysql --host=$(MYSQL_HOST) --user=$(MYSQL_USER) --password=$MYSQL_PASSWORD $(MYSQL_DATABASE) < "$file"
+          if [ $? -ne 0 ]; then
+            echo "Error executing $file"
+            exit 1
+          fi
+        done
+      displayName: 'Execute MySQL Queries'
