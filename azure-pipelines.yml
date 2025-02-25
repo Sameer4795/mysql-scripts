@@ -1,18 +1,13 @@
 trigger:
-- main  # You can replace 'main' with your branch name
+- main
 
 pool:
-  name: 'Default'  # Using the default agent pool
+  name: default  # Your agent pool
 
 steps:
 - task: AzureKeyVault@2
   inputs:
-    azureSubscription: 'sam'  # Replace with your Azure service connection name
-    KeyVaultName: 'SameerKeyVault'                       # Replace with your Key Vault name
-    SecretsFilter: '*'                                  # Fetch all secrets, or specify specific secrets like 'mysql-password, mysql-connection-string'
+    azureSubscription: 'sam'
+    KeyVaultName: 'SameerKeyVault'
+    SecretsFilter: '*'
     RunAsPreJob: false
-
-- script: |
-    echo $(mysql-password)
-    echo $(mysql-connection-string)
-  displayName: 'Print the secrets'
