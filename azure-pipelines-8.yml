@@ -17,36 +17,36 @@ stages:
     displayName: 'Run MySQL Queries'
     pool:
       name: 'Default'  # Use your self-hosted agent if needed
-    steps:
 
-    - checkout: self  # This fetches the repository where the pipeline YAML is stored
+    steps:
+    - checkout: self  # Fetch the repository where the pipeline YAML is stored
 
     - task: AzureKeyVault@2
       inputs:
-        azureSubscription: 'SameerKeyVaultConnection'  # Replace with your Azure service connection name
-        KeyVaultName: 'SameerKeyVault'  # Replace with your Azure Key Vault name
-        SecretsFilter: 'MYSQL_PASSWORD,MYSQL_CONNECTION_STRING'  # Retrieve only necessary secrets
+        azureSubscription: 'SameerKeyVaultConnection'  # Your service connection name
+        KeyVaultName: 'SameerKeyVault'
+        SecretsFilter: 'mysql-password,mysql-connection-string'
         RunAsPreJob: false
 
     - script: |
         echo "Retrieving MySQL credentials from Azure Key Vault..."
-        export MYSQL_CONNECTION_STRING=$(MYSQL_CONNECTION_STRING)
-        export MYSQL_PASSWORD=$(MYSQL_PASSWORD)
+        MYSQL_CONNECTION_STRING=$(echo $(mysql-connection-string))
+        MYSQL_PASSWORD=$(echo $(mysql-password))
 
         echo "Cloning the repository..."
         git clone https://github.com/Sameer4795/mysql-scripts.git sql-scripts
         cd sql-scripts
 
-        echo "Checking if the MySQL scripts directory exists..."
-        if [ ! -d "." ]; then
-          echo "Error: mysql-scripts directory not found!"
+        echo "Checking if MySQL scripts exist..."
+        if [ -z "$(ls -A *.sql 2>/dev/null)" ]; then
+          echo "Error: No SQL scripts found!"
           exit 1
         fi
 
-        echo "Executing MySQL scripts from repository..."
+        echo "Executing MySQL scripts..."
         for file in *.sql; do
           echo "Running $file..."
-          mysql --host=$(MYSQL_HOST) --user=$(MYSQL_USER) --password=$MYSQL_PASSWORD $(MYSQL_DATABASE) < "$file"
+          mysql --host=$MYSQL_HOST --user=$MYSQL_USER --password=$MYSQL_PASSWORD $MYSQL_DATABASE < "$file"
           if [ $? -ne 0 ]; then
             echo "Error executing $file"
             exit 1
