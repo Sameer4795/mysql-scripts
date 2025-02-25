@@ -1,0 +1,55 @@
+trigger:
+- main  # Trigger when changes are pushed to the main branch
+
+pool:
+  vmImage: 'ubuntu-latest'  # Use an Ubuntu agent for execution
+
+variables:
+  MYSQL_HOST: 'localhost'  # Change if MySQL is running remotely
+  MYSQL_DATABASE: 'mydatabase'  # Replace with your actual database name
+  MYSQL_USER: 'root'  # Your MySQL username
+
+stages:
+- stage: DeployMySQL
+  displayName: 'Deploy MySQL Queries'
+  jobs:
+  - job: ExecuteQueries
+    displayName: 'Run MySQL Queries'
+    pool:
+      name: 'Default'  # Use your self-hosted agent if needed
+    steps:
+
+    - checkout: self  # This fetches the repository where the pipeline YAML is stored
+
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: 'SameerKeyVaultConnection'  # Replace with your Azure service connection name
+        KeyVaultName: 'SameerKeyVault'  # Replace with your Azure Key Vault name
+        SecretsFilter: 'MYSQL_PASSWORD,MYSQL_CONNECTION_STRING'  # Retrieve only necessary secrets
+        RunAsPreJob: false
+
+    - script: |
+        echo "Retrieving MySQL credentials from Azure Key Vault..."
+        export MYSQL_CONNECTION_STRING=$(MYSQL_CONNECTION_STRING)
+        export MYSQL_PASSWORD=$(MYSQL_PASSWORD)
+
+        echo "Cloning the repository..."
+        git clone https://github.com/Sameer4795/mysql-scripts.git sql-scripts
+        cd sql-scripts
+
+        echo "Checking if the MySQL scripts directory exists..."
+        if [ ! -d "." ]; then
+          echo "Error: mysql-scripts directory not found!"
+          exit 1
+        fi
+
+        echo "Executing MySQL scripts from repository..."
+        for file in *.sql; do
+          echo "Running $file..."
+          mysql --host=$(MYSQL_HOST) --user=$(MYSQL_USER) --password=$MYSQL_PASSWORD $(MYSQL_DATABASE) < "$file"
+          if [ $? -ne 0 ]; then
+            echo "Error executing $file"
+            exit 1
+          fi
+        done
+      displayName: 'Execute MySQL Queries'
