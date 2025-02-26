@@ -1,0 +1,73 @@
+trigger:
+- main  # Change this based on your branch name
+
+pool:
+  vmImage: 'ubuntu-latest'  # Use 'windows-latest' if needed
+
+variables:
+  KEYVAULT_RG: "rg-keyvault-devops"
+  KEYVAULT_NAME: "keyvault019"
+
+steps:
+- task: AzureCLI@2
+  displayName: "Create Azure Key Vault & Assign Permissions"
+  inputs:
+    azureSubscription: 'Your-Service-Connection-Name'  # Change this to your Azure DevOps service connection
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      set -e  # Exit script if any command fails
+
+      # Fetch Subscription ID
+      SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+      # Create a resource group
+      az group create --name $KEYVAULT_RG --location westeurope
+
+      # Create Key Vault with RBAC (Not Access Policy)
+      az keyvault create --name $KEYVAULT_NAME \
+         --resource-group $KEYVAULT_RG \
+         --location westeurope \
+         --enable-rbac-authorization
+
+      # Get User ID
+      USER_ID=$(az ad signed-in-user show --query objectId -o tsv)
+
+      # Get Key Vault ID
+      KEYVAULT_ID=$(az keyvault show --name $KEYVAULT_NAME \
+         --resource-group $KEYVAULT_RG \
+         --query id --output tsv)
+
+      # Assign RBAC role to the current user
+      az role assignment create --role "Key Vault Secrets Officer" \
+         --scope $KEYVAULT_ID \
+         --assignee-object-id $USER_ID
+
+      # Create a secret in Key Vault
+      az keyvault secret set --name "DatabasePassword" \
+         --value "mySecretPassword" \
+         --vault-name $KEYVAULT_NAME
+
+- task: AzureCLI@2
+  displayName: "Create Service Principal & Assign RBAC"
+  inputs:
+    azureSubscription: 'Your-Service-Connection-Name'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      set -e
+
+      # Create a Service Principal (SPN)
+      SPN=$(az ad sp create-for-rbac -n "spn-keyvault-devops")
+      echo "Service Principal Details: $SPN"
+
+      # Extract SPN App ID
+      SPN_APPID=$(echo $SPN | jq -r .appId)
+
+      # Get SPN Object ID
+      SPN_ID=$(az ad sp list --display-name "spn-keyvault-devops" --query "[0].id" --out tsv)
+
+      # Assign RBAC role to SPN
+      az role assignment create --role "Key Vault Secrets User" \
+         --scope $KEYVAULT_ID \
+         --assignee-object-id $SPN_ID
