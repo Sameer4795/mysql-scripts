@@ -1,5 +1,5 @@
 trigger:
-- main  # Change this based on your branch name
+- main  # Change this if your branch name is different
 
 pool:
   vmImage: 'ubuntu-latest'  # Use 'windows-latest' if needed
@@ -12,7 +12,7 @@ steps:
 - task: AzureCLI@2
   displayName: "Create Azure Key Vault & Assign Permissions"
   inputs:
-    azureSubscription: 'Your-Service-Connection-Name'  # Change this to your Azure DevOps service connection
+    azureSubscription: 'MyConnection'  # Your Azure DevOps Service Connection
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
@@ -51,7 +51,7 @@ steps:
 - task: AzureCLI@2
   displayName: "Create Service Principal & Assign RBAC"
   inputs:
-    azureSubscription: 'Your-Service-Connection-Name'
+    azureSubscription: 'MyConnection'
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
