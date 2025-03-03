@@ -9,11 +9,16 @@ variables:
   mysqlUser: 'root'  # MySQL user
   mysqlPassword: $(MYSQL_PASSWORD)  # Secure variable for the MySQL password
   databaseName: 'my_database'  # Database name
-  sqlRepo: 'Sameer4795/mysql-scripts'  # GitHub repository for SQL scripts
+  sqlRepo: 'https://github.com/Sameer4795/mysql-scripts.git'  # GitHub repository for SQL scripts
   sqlFile: 'setup.sql'  # SQL file to execute
 
 steps:
   - checkout: self  # Fetch the repository containing the SQL script
+  
+  - script: |
+      echo "Cloning MySQL scripts repository from GitHub..."
+      git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts  # Clone the repo containing your SQL scripts
+    displayName: 'Clone MySQL Scripts Repository'
 
   - script: |
       echo "Installing MySQL client..."
@@ -22,13 +27,7 @@ steps:
     displayName: 'Install MySQL Client'
 
   - script: |
-      echo "Cloning SQL scripts repository from GitHub..."
-      git clone https://github.com/Sameer4795/mysql-scripts.git $(Build.SourcesDirectory)/mysql-scripts  # Clone the repo containing your SQL scripts
-    displayName: 'Clone MySQL Scripts Repository'
-
-  - script: |
       echo "Running SQL script..."
       mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/mysql-scripts/$(sqlFile)  # Run the SQL script
     displayName: 'Run SQL Script'
     condition: succeeded()  # Only run if previous steps succeed
-
