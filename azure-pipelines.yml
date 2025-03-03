@@ -21,9 +21,14 @@ steps:
     displayName: 'Clone MySQL Scripts Repository'
 
   - script: |
+      echo "Listing contents of $(Build.SourcesDirectory)..."
+      ls $(Build.SourcesDirectory)  # List the top-level files in the directory
+    displayName: 'List Contents of Source Directory'
+
+  - script: |
       echo "Listing contents of mysql-scripts directory..."
-      ls $(Build.SourcesDirectory)/mysql-scripts  # List files to verify the path
-    displayName: 'List Files in MySQL Scripts Directory'
+      ls $(Build.SourcesDirectory)/mysql-scripts  # List the contents of the cloned repository
+    displayName: 'List Contents of mysql-scripts Directory'
 
   - script: |
       echo "Installing MySQL client..."
