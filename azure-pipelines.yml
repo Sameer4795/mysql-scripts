@@ -9,26 +9,27 @@ variables:
   mysqlUser: 'root'  # MySQL user
   mysqlPassword: $(MYSQL_PASSWORD)  # Secure variable for the MySQL password
   databaseName: 'my_database'  # Database name
-  sqlRepo: 'https://github.com/Sameer4795/mysql-scripts.git'  # GitHub repository for SQL scripts
+  sqlRepo: 'https://github.com/Sameer4795/mysql-scripts1.git'  # Correct GitHub repository for SQL scripts
   sqlFile: 'setup.sql'  # SQL file to execute
 
 steps:
-  - checkout: self  # Fetch the repository containing the SQL script
-  
-  - script: |
-      echo "Cloning MySQL scripts repository from GitHub..."
-      git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts  # Clone the repo containing your SQL scripts
-    displayName: 'Clone MySQL Scripts Repository'
-
+  # Debug Step: List the contents of $(Build.SourcesDirectory) before cloning anything
   - script: |
       echo "Listing contents of $(Build.SourcesDirectory)..."
-      ls $(Build.SourcesDirectory)  # List the top-level files in the directory
-    displayName: 'List Contents of Source Directory'
+      ls $(Build.SourcesDirectory)  # List the top-level files in the directory before cloning
+    displayName: 'List Contents Before Cloning'
 
+  # Explicitly Clone the Repository from GitHub to ensure the scripts are pulled
   - script: |
-      echo "Listing contents of mysql-scripts directory..."
-      ls $(Build.SourcesDirectory)/mysql-scripts  # List the contents of the cloned repository
-    displayName: 'List Contents of mysql-scripts Directory'
+      echo "Cloning MySQL scripts repository from GitHub..."
+      git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts  # Explicitly clone the repo
+    displayName: 'Clone MySQL Scripts Repository'
+
+  # Debug Step: List the contents of the mysql-scripts directory after cloning
+  - script: |
+      echo "Listing contents of $(Build.SourcesDirectory)/mysql-scripts..."
+      ls $(Build.SourcesDirectory)/mysql-scripts  # List files in the cloned repository
+    displayName: 'List Contents of mysql-scripts Directory After Cloning'
 
   - script: |
       echo "Installing MySQL client..."
@@ -36,6 +37,7 @@ steps:
       sudo apt-get install mysql-client -y  # Install MySQL client if not already installed
     displayName: 'Install MySQL Client'
 
+  # Run the SQL script
   - script: |
       echo "Running SQL script..."
       mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/mysql-scripts/$(sqlFile)  # Run the SQL script
