@@ -1,8 +1,8 @@
 trigger:
-- main  # Trigger pipeline on changes to the main branch
+- main  # Change to your branch name if needed
 
 pool:
-  name: 'Default'  # This ensures that the default agent pool is used
+  vmImage: 'ubuntu-latest'  # Use the Azure DevOps hosted Ubuntu agent
 
 variables:
   mysqlHost: "your-mysql-host"  # Use 'localhost' if MySQL is on the same machine as the agent
@@ -15,6 +15,12 @@ variables:
 
 steps:
 - checkout: self  # Fetches the repository
+
+- script: |
+    echo "Installing MySQL client tools..."
+    sudo apt-get update
+    sudo apt-get install -y mysql-client
+  displayName: 'Install MySQL Client'
 
 - script: |
     echo "Cloning SQL scripts repository..."
