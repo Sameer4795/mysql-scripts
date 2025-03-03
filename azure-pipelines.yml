@@ -1,13 +1,42 @@
 trigger:
-- main
+- main  # Change this to your branch name
 
 pool:
-  name: default  # Your agent pool
+  name: Default  # Uses the default agent pool
+
+variables:
+  mysqlHost: "your-mysql-host"  # Use localhost if MySQL is on your machine
+  mysqlUser: "your-mysql-user"
+  mysqlPassword: "$(MYSQL_PASSWORD)"  # Store in Azure DevOps secret variables
+  databaseName: "your-database"
+  backupFile: "$(Build.ArtifactStagingDirectory)/db_backup.sql"
+  sqlRepo: "Sameer4795/mysql-scripts"
+  sqlScriptsPath: "$(Build.SourcesDirectory)/mysql-scripts"
 
 steps:
-- task: AzureKeyVault@2
-  inputs:
-    azureSubscription: 'sam'
-    KeyVaultName: 'SameerKeyVault'
-    SecretsFilter: '*'
-    RunAsPreJob: false
+- checkout: self  # Fetches the main repository
+
+- script: |
+    echo "Cloning SQL scripts repository..."
+    git clone https://github.com/Sameer4795/mysql-scripts.git $(sqlScriptsPath)
+  displayName: 'Clone SQL Scripts Repo'
+
+- script: |
+    echo "Creating MySQL backup..."
+    mysqldump -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) > $(backupFile)
+  displayName: 'Backup MySQL Database'
+
+- script: |
+    echo "Deploying SQL scripts..."
+    for file in $(sqlScriptsPath)/*.sql; do
+      echo "Executing $file"
+      mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < "$file"
+    done
+  displayName: 'Run SQL Scripts'
+  continueOnError: true  # Allow failure detection
+
+- script: |
+    echo "Deployment failed. Restoring backup..."
+    mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(backupFile)
+  displayName: 'Rollback on Failure'
+  condition: failed()
