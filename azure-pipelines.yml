@@ -2,26 +2,33 @@ trigger:
   - main  # Trigger pipeline on changes to the main branch
 
 pool:
-  name: Default  # Using the default agent pool, assuming self-hosted agent is used
+  name: Default  # Assuming you're using the default agent pool (self-hosted or Microsoft-hosted)
 
 variables:
-  mysqlHost: 'localhost'  # Use localhost if MySQL is installed on the same machine
+  mysqlHost: 'localhost'  # Use your MySQL server's public IP or hostname
   mysqlUser: 'root'  # MySQL user
-  mysqlPassword: $(MYSQL_PASSWORD)  # Using a secure variable for the password
-  databaseName: 'my_database'  # Name of the database to use
-  sqlFile: 'setup.sql'  # Name of your SQL file
+  mysqlPassword: $(MYSQL_PASSWORD)  # Secure variable for the MySQL password
+  databaseName: 'my_database'  # Database name
+  sqlRepo: 'Sameer4795/mysql-scripts'  # GitHub repository for SQL scripts
+  sqlFile: 'setup.sql'  # SQL file to execute
 
 steps:
-  - checkout: self  # Checkout the repository (this pulls your setup.sql file)
+  - checkout: self  # Fetch the repository containing the SQL script
 
   - script: |
       echo "Installing MySQL client..."
       sudo apt-get update
-      sudo apt-get install mysql-client -y  # Install MySQL client on the build agent
+      sudo apt-get install mysql-client -y  # Install MySQL client if not already installed
     displayName: 'Install MySQL Client'
 
   - script: |
+      echo "Cloning SQL scripts repository from GitHub..."
+      git clone https://github.com/Sameer4795/mysql-scripts.git $(Build.SourcesDirectory)/mysql-scripts  # Clone the repo containing your SQL scripts
+    displayName: 'Clone MySQL Scripts Repository'
+
+  - script: |
       echo "Running SQL script..."
-      mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/$(sqlFile)
+      mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/mysql-scripts/$(sqlFile)  # Run the SQL script
     displayName: 'Run SQL Script'
-    condition: succeeded()  # Run only if the previous step was successful
+    condition: succeeded()  # Only run if previous steps succeed
+
