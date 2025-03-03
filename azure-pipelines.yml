@@ -1,20 +1,20 @@
 trigger:
-- main  # Change to your branch name
+- main  # Trigger pipeline on changes to the main branch
 
 pool:
-  vmImage: 'ubuntu-latest'  # Use a self-hosted agent if MySQL is on-premises
+  name: 'Default'  # This ensures that the default agent pool is used
 
 variables:
-  mysqlHost: "your-mysql-host"  # Use localhost if MySQL is on your machine
+  mysqlHost: "your-mysql-host"  # Use 'localhost' if MySQL is on the same machine as the agent
   mysqlUser: "your-mysql-user"
-  mysqlPassword: "$(MYSQL_PASSWORD)"  # Store in Azure DevOps secret variables
+  mysqlPassword: "$(MYSQL_PASSWORD)"  # Store this as a secret variable in Azure DevOps
   databaseName: "your-database"
   backupFile: "$(Build.ArtifactStagingDirectory)/db_backup.sql"
   sqlRepo: "Sameer4795/mysql-scripts"
   sqlScriptsPath: "$(Build.SourcesDirectory)/mysql-scripts"
 
 steps:
-- checkout: self  # Fetches the main repository
+- checkout: self  # Fetches the repository
 
 - script: |
     echo "Cloning SQL scripts repository..."
@@ -33,10 +33,10 @@ steps:
       mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < "$file"
     done
   displayName: 'Run SQL Scripts'
-  continueOnError: true  # Allow failure detection
+  continueOnError: true  # Allow failure detection to handle rollback
 
 - script: |
     echo "Deployment failed. Restoring backup..."
     mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(backupFile)
   displayName: 'Rollback on Failure'
-  condition: failed()
+  condition: failed()  # This step runs only if the previous steps fail
