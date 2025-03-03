@@ -5,7 +5,7 @@ pool:
   name: Default  # Assuming you're using the default agent pool (self-hosted or Microsoft-hosted)
 
 variables:
-  mysqlHost: 'localhost'  # Use your MySQL server's public IP or hostname
+  mysqlHost: 'localhost'  # Change to your MySQL host if it's different
   mysqlUser: 'root'  # MySQL user
   mysqlPassword: $(MYSQL_PASSWORD)  # Secure variable for the MySQL password
   databaseName: 'my_database'  # Database name
@@ -19,6 +19,11 @@ steps:
       echo "Cloning MySQL scripts repository from GitHub..."
       git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts  # Clone the repo containing your SQL scripts
     displayName: 'Clone MySQL Scripts Repository'
+
+  - script: |
+      echo "Listing contents of mysql-scripts directory..."
+      ls $(Build.SourcesDirectory)/mysql-scripts  # List files to verify the path
+    displayName: 'List Files in MySQL Scripts Directory'
 
   - script: |
       echo "Installing MySQL client..."
