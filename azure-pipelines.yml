@@ -2,11 +2,11 @@ trigger:
 - main  # Change to your branch name if needed
 
 pool:
-  vmImage: 'ubuntu-latest'  # Use the Azure DevOps hosted Ubuntu agent
+  name: 'Default'  # Ensures the default agent pool is used
 
 variables:
-  mysqlHost: "your-mysql-host"  # Use 'localhost' if MySQL is on the same machine as the agent
-  mysqlUser: "your-mysql-user"
+  mysqlHost: "localhost"  # Use 'localhost' if MySQL is on the same machine as the agent
+  mysqlUser: "root"
   mysqlPassword: "$(MYSQL_PASSWORD)"  # Store this as a secret variable in Azure DevOps
   databaseName: "your-database"
   backupFile: "$(Build.ArtifactStagingDirectory)/db_backup.sql"
