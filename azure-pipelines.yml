@@ -1,8 +1,8 @@
 trigger:
-- main  # Change this to your branch name
+- main  # Change to your branch name
 
 pool:
-  name: Default  # Uses the default agent pool
+  vmImage: 'ubuntu-latest'  # Use a self-hosted agent if MySQL is on-premises
 
 variables:
   mysqlHost: "your-mysql-host"  # Use localhost if MySQL is on your machine
