@@ -2,44 +2,62 @@ trigger:
   - main  # Trigger pipeline on changes to the main branch
 
 pool:
-  name: Default  # Assuming you're using the default agent pool (self-hosted or Microsoft-hosted)
+  name: Default  # Using the default agent pool
 
 variables:
-  mysqlHost: 'localhost'  # Change to your MySQL host if it's different
-  mysqlUser: 'root'  # MySQL user
-  mysqlPassword: $(MYSQL_PASSWORD)  # Secure variable for the MySQL password
-  databaseName: 'my_database'  # Database name
-  sqlRepo: 'https://github.com/Sameer4795/mysql-scripts1.git'  # Correct GitHub repository for SQL scripts
-  sqlFile: 'setup.sql'  # SQL file to execute
+  mysqlHost: 'localhost'  # Change this if MySQL is running on a different host
+  mysqlUser: 'root'  # MySQL username
+  mysqlPassword: $(MYSQL_PASSWORD)  # Secure Azure DevOps variable for the password
+  databaseName: 'my_database'  # Name of the database
+  sqlRepo: 'https://github.com/Sameer4795/mysql-scripts1.git'  # GitHub repo containing SQL scripts
+  sqlFile: 'setup.sql'  # SQL script file to execute
 
 steps:
-  # Debug Step: List the contents of $(Build.SourcesDirectory) before cloning anything
+  # Debug Step: Check if MySQL password is being set correctly
+  - script: |
+      echo "Checking if MYSQL_PASSWORD is set..."
+      if [ -z "$(mysqlPassword)" ]; then
+        echo "MYSQL_PASSWORD is empty! Please set it in Azure DevOps."
+        exit 1
+      else
+        echo "MYSQL_PASSWORD is set."
+      fi
+    displayName: 'Debug: Check MySQL Password Variable'
+
+  # Debug Step: List directory contents before cloning SQL repo
   - script: |
       echo "Listing contents of $(Build.SourcesDirectory)..."
-      ls $(Build.SourcesDirectory)  # List the top-level files in the directory before cloning
+      ls $(Build.SourcesDirectory)
     displayName: 'List Contents Before Cloning'
 
-  # Explicitly Clone the Repository from GitHub to ensure the scripts are pulled
+  # Clone SQL scripts repository
   - script: |
-      echo "Cloning MySQL scripts repository from GitHub..."
-      git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts  # Explicitly clone the repo
+      echo "Cloning MySQL scripts repository..."
+      git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts
     displayName: 'Clone MySQL Scripts Repository'
 
-  # Debug Step: List the contents of the mysql-scripts directory after cloning
+  # Debug Step: List contents of cloned repository
   - script: |
       echo "Listing contents of $(Build.SourcesDirectory)/mysql-scripts..."
-      ls $(Build.SourcesDirectory)/mysql-scripts  # List files in the cloned repository
-    displayName: 'List Contents of mysql-scripts Directory After Cloning'
+      ls $(Build.SourcesDirectory)/mysql-scripts
+    displayName: 'List Contents of mysql-scripts Directory'
 
+  # Install MySQL client if not already installed
   - script: |
       echo "Installing MySQL client..."
       sudo apt-get update
-      sudo apt-get install mysql-client -y  # Install MySQL client if not already installed
+      sudo apt-get install mysql-client -y
     displayName: 'Install MySQL Client'
+
+  # Debug Step: Test MySQL connection before executing the script
+  - script: |
+      echo "Testing MySQL connection..."
+      mysql -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) -e "SHOW DATABASES;"
+    displayName: 'Test MySQL Connection'
 
   # Run the SQL script
   - script: |
       echo "Running SQL script..."
-      mysql -h $(mysqlHost) -u $(mysqlUser) -p$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/mysql-scripts/$(sqlFile)  # Run the SQL script
+      mysql -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/mysql-scripts/$(sqlFile)
     displayName: 'Run SQL Script'
     condition: succeeded()  # Only run if previous steps succeed
