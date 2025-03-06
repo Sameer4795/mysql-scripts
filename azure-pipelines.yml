@@ -5,74 +5,42 @@ pool:
   name: Default  # Using the default agent pool
 
 variables:
-  mysqlHost: 'localhost'  # Change this if MySQL is running on a different host
-  mysqlUser: 'root'  # MySQL username
-  mysqlPassword: $(MYSQL_PASSWORD)  # Secure Azure DevOps variable for the password
-  databaseName: 'my_database'  # Name of the database
-  sqlRepo: 'https://github.com/Sameer4795/mysql-scripts1.git'  # GitHub repo containing SQL scripts
-  sqlFile: 'setup.sql'  # SQL script file to execute
-  backupFile: '$(Build.ArtifactStagingDirectory)/mysql_backup.sql'  # Path to store the backup
+  mysqlHost: 'localhost'
+  mysqlUser: 'root'
+  mysqlPassword: $(MYSQL_PASSWORD)
+  databaseName: 'my_database'
+  backupFile: '$(Build.ArtifactStagingDirectory)/mysql_backup.sql'
 
 steps:
-  # Debug Step: Check if MySQL password is being set correctly
-  - script: |
-      echo "Checking if MYSQL_PASSWORD is set..."
-      if [ -z "$(mysqlPassword)" ]; then
-        echo "MYSQL_PASSWORD is empty! Please set it in Azure DevOps."
-        exit 1
-      else
-        echo "MYSQL_PASSWORD is set."
-      fi
-    displayName: 'Debug: Check MySQL Password Variable'
-
-  # List directory contents before cloning SQL repo
-  - script: |
-      echo "Listing contents of $(Build.SourcesDirectory)..."
-      ls $(Build.SourcesDirectory)
-    displayName: 'List Contents Before Cloning'
-
-  # Clone SQL scripts repository
-  - script: |
-      echo "Cloning MySQL scripts repository..."
-      git clone $(sqlRepo) $(Build.SourcesDirectory)/mysql-scripts
-    displayName: 'Clone MySQL Scripts Repository'
-
-  # List contents of cloned repository
-  - script: |
-      echo "Listing contents of $(Build.SourcesDirectory)/mysql-scripts..."
-      ls $(Build.SourcesDirectory)/mysql-scripts
-    displayName: 'List Contents of mysql-scripts Directory'
-
-  # Install MySQL client if not already installed
-  - script: |
-      echo "Installing MySQL client..."
-      sudo apt-get update
-      sudo apt-get install mysql-client -y
-    displayName: 'Install MySQL Client'
-
-  # Debug Step: Test MySQL connection before executing the script
-  - script: |
-      echo "Testing MySQL connection..."
-      mysql -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) -e "SHOW DATABASES;"
-    displayName: 'Test MySQL Connection'
-
-  # ✅ Backup MySQL Database Before Running SQL Script
+  # ✅ Step 1: Backup MySQL Database
   - script: |
       echo "Taking MySQL database backup..."
       mysqldump -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) $(databaseName) > $(backupFile)
-      echo "Backup completed. File saved at: $(backupFile)"
+
+      echo "Verifying backup file..."
+      ls -lh $(backupFile)
     displayName: 'Backup MySQL Database'
 
-  # ✅ Upload the Backup File as an Artifact
+  # ✅ Step 2: Upload Backup to Artifacts
   - task: PublishBuildArtifacts@1
     inputs:
       pathToPublish: '$(backupFile)'
       artifactName: 'MySQLBackup'
     displayName: 'Upload MySQL Backup to Artifacts'
 
-  # Run the SQL script
+  # ✅ Step 3: Download Backup from Artifacts (For Recovery)
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      artifactName: 'MySQLBackup'
+      downloadPath: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Download MySQL Backup from Artifacts'
+
+  # ✅ Step 4: Restore Database from Backup
   - script: |
-      echo "Running SQL script..."
-      mysql -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) $(databaseName) < $(Build.SourcesDirectory)/mysql-scripts/$(sqlFile)
-    displayName: 'Run SQL Script'
-    condition: succeeded()  # Only run if previous steps succeed
+      echo "Restoring MySQL database from backup..."
+      mysql -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) $(databaseName) < $(Build.ArtifactStagingDirectory)/mysql_backup.sql
+
+      echo "Verifying restored database..."
+      mysql -h $(mysqlHost) -u $(mysqlUser) --password=$(mysqlPassword) -e "SHOW TABLES;" $(databaseName)
+    displayName: 'Restore MySQL Database'
