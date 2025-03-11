@@ -1,0 +1,10 @@
+- task: AzureKeyVault@2
+  inputs:
+    azureSubscription: '<YOUR_AZURE_SERVICE_CONNECTION>'
+    KeyVaultName: 'SameerKeyVaultt'
+    SecretsFilter: 'MySecret'
+    RunAsPreJob: false
+
+- script: |
+    echo "$(MySecret)" > secret.txt
+  displayName: 'Save secret to file'
