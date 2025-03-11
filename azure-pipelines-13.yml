@@ -1,3 +1,10 @@
+trigger:
+- main  # Adjust based on your branch
+
+pool: 
+  name: 'Default'  # Use your agent pool
+
+steps:
 - task: AzureKeyVault@2
   inputs:
     azureSubscription: 'a'
@@ -8,3 +15,8 @@
 - script: |
     echo "$(MySecret)" > secret.txt
   displayName: 'Save secret to file'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: 'secret.txt'
+    artifactName: 'Secrets'
